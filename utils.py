@@ -90,7 +90,8 @@ def PCA_image_monochrome_compression(img_original,
                                      show_pixels = False, 
                                      show_part_of_variance = False, 
                                      show_graph_of_variance = False, 
-                                     show_images = True):
+                                     show_images = True, 
+                                     show_compression_stats=False):
     if show_pixels:
         print(f'На картинке {img_original.shape[0] * img_original.shape[1]} пикселей')
 
@@ -131,13 +132,41 @@ def PCA_image_monochrome_compression(img_original,
         plt.axis('off')
         plt.show()
 
+    # --- Вычисление объёмов данных ---
+    if show_compression_stats:
+        H, W = img_original.shape
+        k = num_of_components
+
+        # Исходное количество чисел
+        original_elements = H * W
+        # Количество чисел после PCA (проекции + компоненты)
+        compressed_elements = H * k + k * W  # = k*(H+W)
+
+        # Коэффициент сжатия
+        compression_ratio = original_elements / compressed_elements
+
+        print(f"\n=== Статистика сжатия ===")
+        print(f"Размер изображения: {H}×{W} = {original_elements} пикселей")
+        print(f"Количество компонент: {k}")
+        print(f"Храним: проекции ({H}×{k}) + компоненты ({k}×{W}) = {compressed_elements} чисел")
+        print(f"Коэффициент сжатия (по количеству чисел): {compression_ratio:.2f}x")
+
+        # Оценка в байтах (если исходные пиксели uint8, а компоненты и проекции float64)
+        original_bytes = original_elements * 1  # uint8 = 1 байт
+        compressed_bytes = (H * k + k * W) * 8  # float64 = 8 байт
+        print(f"Оригинал (uint8): ~{original_bytes/1024:.1f} KB")
+        print(f"Сжатое представление (float64): ~{compressed_bytes/1024:.1f} KB")
+        print(f"Реальное сжатие в байтах: {original_bytes/compressed_bytes:.2f}x (с учётом типа данных)")
+        print("==========================\n")
+
     return img_compressed
 
 # Функция, которая сжимает изображение в цветном RGB-формате с помощью метода главных компонент (PCA)
 
 def PCA_image_color_compression(img_original, 
                                 num_of_components, 
-                                show_images=True):
+                                show_images=True, 
+                                show_compression_stats=False):
 
     # Разделяем на каналы (исходное изображение в RGB)
     R = img_original[:, :, 0]
@@ -162,8 +191,34 @@ def PCA_image_color_compression(img_original,
         
         plt.subplot(1, 2, 2)
         plt.imshow(np.clip(img_compressed, 0, 1))
-        plt.title(f'Восстановленное (PCA, {num_of_components} компонент)')
+        plt.title(f'Сжатое (PCA, {num_of_components} компонент)')
         plt.axis('off')
         plt.show()
+
+    # Вывод суммарной статистики по цветному изображению
+    if show_compression_stats:
+        H, W, C = img_original.shape
+        k = num_of_components
+
+        # Для цветного изображения храним отдельно проекции и компоненты для каждого канала
+        # Общее количество чисел после сжатия: 3 * (H*k + k*W) = 3*k*(H+W)
+        original_elements = H * W * C   # C=3 для RGB
+        compressed_elements = 3 * (H * k + k * W)   # три канала
+
+        compression_ratio = original_elements / compressed_elements
+
+        print(f"\n=== Суммарная статистика сжатия (цветное изображение) ===")
+        print(f"Размер изображения: {H}×{W}×{C} = {original_elements} чисел (пикселей×каналы)")
+        print(f"Количество компонент на канал: {k}")
+        print(f"Храним: для каждого канала (проекции {H}×{k} + компоненты {k}×{W})")
+        print(f"Общее число чисел: {compressed_elements}")
+        print(f"Коэффициент сжатия (по количеству чисел): {compression_ratio:.2f}x")
+
+        original_bytes = original_elements * 1  # uint8
+        compressed_bytes = compressed_elements * 8  # float64
+        print(f"Оригинал (uint8): ~{original_bytes/1024:.1f} KB")
+        print(f"Сжатое представление (float64): ~{compressed_bytes/1024:.1f} KB")
+        print(f"Реальное сжатие в байтах: {original_bytes/compressed_bytes:.2f}x")
+        print("============================================================\n")
     
     return img_compressed
